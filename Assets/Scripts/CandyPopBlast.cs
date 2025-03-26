@@ -1,5 +1,9 @@
-using UnityEngine;
+// Add this variable
+private AudioManager audioManager;
 
-public class CandyPopBlast : MonoBehaviour {
-    // [Paste full script from our previous chat]
-}
+// In Start():
+audioManager = FindObjectOfType<AudioManager>();
+
+// When matches occur:
+if (audioManager != null) 
+    audioManager.PlayPop();
