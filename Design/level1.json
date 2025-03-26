@@ -1,0 +1,8 @@
+{
+  "targetScore": 1000,
+  "moves": 15,
+  "goals": [
+    { "type": "blue", "count": 20 },
+    { "type": "green", "count": 15 }
+  ]
+}
