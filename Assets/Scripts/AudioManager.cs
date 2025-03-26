@@ -3,10 +3,13 @@ using System.Collections.Generic;
 
 public class AudioManager : MonoBehaviour
 {
+    public static AudioManager Instance { get; private set; }
+
     [Header("Volume Settings")]
     [Range(0, 1)] public float masterVolume = 1f;
-    [Range(0, 1)] public float sfxVolume = 1f;
     [Range(0, 1)] public float musicVolume = 1f;
+    [Range(0, 1)] public float sfxVolume = 1f;
+    public bool isMuted;
 
     [Header("Sound Effects")]
     public AudioClip popSound;
@@ -14,55 +17,50 @@ public class AudioManager : MonoBehaviour
     public AudioClip winSound;
     public AudioClip blastSound;
 
-    [Header("Background Music")]
+    [Header("Music")]
     public AudioClip mainTheme;
     public AudioClip gameOverMusic;
 
     private AudioSource musicSource;
     private List<AudioSource> sfxPool = new List<AudioSource>();
-    private int poolSize = 5;
-
-    public static AudioManager Instance { get; private set; }
+    private const int POOL_SIZE = 5;
 
     void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Initialize();
         }
         else
         {
             Destroy(gameObject);
-            return;
-        }
-
-        // Music source setup
-        musicSource = gameObject.AddComponent<AudioSource>();
-        musicSource.loop = true;
-        musicSource.volume = musicVolume * masterVolume;
-
-        // SFX pool setup
-        for (int i = 0; i < poolSize; i++)
-        {
-            GameObject sfxObj = new GameObject($"SFX_{i}");
-            sfxObj.transform.SetParent(transform);
-            AudioSource source = sfxObj.AddComponent<AudioSource>();
-            source.playOnAwake = false;
-            sfxPool.Add(source);
         }
     }
 
-    void Start()
+    void Initialize()
     {
+        // Music setup
+        musicSource = gameObject.AddComponent<AudioSource>();
+        musicSource.loop = true;
+        musicSource.playOnAwake = false;
+
+        // SFX pool
+        for (int i = 0; i < POOL_SIZE; i++)
+        {
+            CreateSFXSource();
+        }
+
+        LoadVolumes();
         PlayMusic(mainTheme);
     }
 
-    // === PUBLIC METHODS ===
     public void PlayMusic(AudioClip clip)
     {
+        if (isMuted || clip == null) return;
         musicSource.clip = clip;
+        musicSource.volume = musicVolume * masterVolume;
         musicSource.Play();
     }
 
@@ -73,67 +71,80 @@ public class AudioManager : MonoBehaviour
 
     public void PlaySFX(AudioClip clip)
     {
-        if (clip == null) return;
+        if (isMuted || clip == null) return;
 
-        AudioSource availableSource = GetAvailableSource();
-        if (availableSource != null)
-        {
-            availableSource.clip = clip;
-            availableSource.volume = sfxVolume * masterVolume;
-            availableSource.Play();
-        }
+        AudioSource source = GetAvailableSource();
+        source.clip = clip;
+        source.volume = sfxVolume * masterVolume;
+        source.Play();
     }
 
     public void SetMasterVolume(float volume)
     {
         masterVolume = Mathf.Clamp01(volume);
-        UpdateAllVolumes();
-    }
-
-    public void SetSFXVolume(float volume)
-    {
-        sfxVolume = Mathf.Clamp01(volume);
-        UpdateAllVolumes();
+        UpdateVolumes();
     }
 
     public void SetMusicVolume(float volume)
     {
         musicVolume = Mathf.Clamp01(volume);
-        musicSource.volume = musicVolume * masterVolume;
+        UpdateVolumes();
     }
 
-    // === PRIVATE METHODS ===
+    public void SetSFXVolume(float volume)
+    {
+        sfxVolume = Mathf.Clamp01(volume);
+        UpdateVolumes();
+    }
+
+    public void ToggleMute(bool mute)
+    {
+        isMuted = mute;
+        AudioListener.volume = mute ? 0 : 1;
+    }
+
+    private void UpdateVolumes()
+    {
+        musicSource.volume = isMuted ? 0 : musicVolume * masterVolume;
+        
+        foreach (var source in sfxPool)
+        {
+            source.volume = isMuted ? 0 : sfxVolume * masterVolume;
+        }
+    }
+
     private AudioSource GetAvailableSource()
     {
-        foreach (AudioSource source in sfxPool)
+        foreach (var source in sfxPool)
         {
             if (!source.isPlaying) return source;
         }
-
-        // If all sources are busy, expand pool
-        return ExpandPool();
+        return CreateSFXSource();
     }
 
-    private AudioSource ExpandPool()
+    private AudioSource CreateSFXSource()
     {
-        GameObject newObj = new GameObject($"SFX_{sfxPool.Count}");
-        newObj.transform.SetParent(transform);
-        AudioSource newSource = newObj.AddComponent<AudioSource>();
-        newSource.playOnAwake = false;
-        sfxPool.Add(newSource);
-        return newSource;
+        AudioSource source = gameObject.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        sfxPool.Add(source);
+        return source;
     }
 
-    private void UpdateAllVolumes()
+    private void LoadVolumes()
     {
-        musicSource.volume = musicVolume * masterVolume;
-        
-        foreach (AudioSource source in sfxPool)
-        {
-            if (source.isPlaying)
-            {
-                source.volume = sfxVolume * masterVolume;
-            }
-        }
+        masterVolume = PlayerPrefs.GetFloat("MasterVol", 0.8f);
+        musicVolume = PlayerPrefs.GetFloat("MusicVol", 0.7f);
+        sfxVolume = PlayerPrefs.GetFloat("SFXVol", 0.9f);
+        isMuted = PlayerPrefs.GetInt("IsMuted", 0) == 1;
+        UpdateVolumes();
+    }
+
+    public void SaveVolumes()
+    {
+        PlayerPrefs.SetFloat("MasterVol", masterVolume);
+        PlayerPrefs.SetFloat("MusicVol", musicVolume);
+        PlayerPrefs.SetFloat("SFXVol", sfxVolume);
+        PlayerPrefs.SetInt("IsMuted", isMuted ? 1 : 0);
+        PlayerPrefs.Save();
     }
 }

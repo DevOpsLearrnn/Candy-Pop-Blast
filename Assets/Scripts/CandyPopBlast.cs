@@ -1,9 +1,13 @@
-// Add this variable
-private AudioManager audioManager;
+// Add these audio calls at key gameplay moments:
 
-// In Start():
-audioManager = FindObjectOfType<AudioManager>();
+// When candies match
+AudioManager.Instance.PlayPop();
 
-// When matches occur:
-if (audioManager != null) 
-    audioManager.PlayPop();
+// When swapping candies
+AudioManager.Instance.PlaySwap();
+
+// When level completes
+AudioManager.Instance.PlayWin();
+
+// When special blast occurs
+AudioManager.Instance.PlayBlast();
