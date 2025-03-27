@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 public class AudioManager : MonoBehaviour
@@ -7,19 +8,20 @@ public class AudioManager : MonoBehaviour
 
     [Header("Volume Settings")]
     [Range(0, 1)] public float masterVolume = 1f;
-    [Range(0, 1)] public float musicVolume = 1f;
-    [Range(0, 1)] public float sfxVolume = 1f;
+    [Range(0, 1)] public float musicVolume = 0.8f;
+    [Range(0, 1)] public float sfxVolume = 0.9f;
     public bool isMuted;
 
-    [Header("Sound Effects")]
+    [Header("Music")]
+    public AudioClip backgroundMusic; // Assign your game_theme.ogg here
+    public AudioClip winMusic;
+    public float musicFadeDuration = 1.5f;
+
+    [Header("SFX")]
     public AudioClip popSound;
     public AudioClip swapSound;
     public AudioClip winSound;
     public AudioClip blastSound;
-
-    [Header("Music")]
-    public AudioClip mainTheme;
-    public AudioClip gameOverMusic;
 
     private AudioSource musicSource;
     private List<AudioSource> sfxPool = new List<AudioSource>();
@@ -45,6 +47,7 @@ public class AudioManager : MonoBehaviour
         musicSource = gameObject.AddComponent<AudioSource>();
         musicSource.loop = true;
         musicSource.playOnAwake = false;
+        musicSource.volume = musicVolume * masterVolume;
 
         // SFX pool
         for (int i = 0; i < POOL_SIZE; i++)
@@ -52,18 +55,56 @@ public class AudioManager : MonoBehaviour
             CreateSFXSource();
         }
 
-        LoadVolumes();
-        PlayMusic(mainTheme);
+        // Auto-play background music
+        PlayMusic(backgroundMusic, fade: false);
     }
 
-    public void PlayMusic(AudioClip clip)
+    // ===== MUSIC CONTROL =====
+    public void PlayMusic(AudioClip clip, bool fade = true)
     {
-        if (isMuted || clip == null) return;
-        musicSource.clip = clip;
-        musicSource.volume = musicVolume * masterVolume;
-        musicSource.Play();
+        if (clip == null || isMuted) return;
+
+        if (fade && musicSource.isPlaying)
+        {
+            StartCoroutine(FadeMusic(clip));
+        }
+        else
+        {
+            musicSource.clip = clip;
+            musicSource.Play();
+        }
     }
 
+    private IEnumerator FadeMusic(AudioClip newClip)
+    {
+        float elapsed = 0f;
+        float startVol = musicSource.volume;
+
+        // Fade out current clip
+        while (elapsed < musicFadeDuration)
+        {
+            musicSource.volume = Mathf.Lerp(startVol, 0, elapsed/musicFadeDuration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        musicSource.Stop();
+        musicSource.clip = newClip;
+        musicSource.Play();
+
+        // Fade in new clip
+        elapsed = 0f;
+        while (elapsed < musicFadeDuration)
+        {
+            musicSource.volume = Mathf.Lerp(0, musicVolume * masterVolume, elapsed/musicFadeDuration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        musicSource.volume = musicVolume * masterVolume;
+    }
+
+    // ===== SFX CONTROL =====
     public void PlayPop() => PlaySFX(popSound);
     public void PlaySwap() => PlaySFX(swapSound);
     public void PlayWin() => PlaySFX(winSound);
@@ -71,7 +112,7 @@ public class AudioManager : MonoBehaviour
 
     public void PlaySFX(AudioClip clip)
     {
-        if (isMuted || clip == null) return;
+        if (clip == null || isMuted) return;
 
         AudioSource source = GetAvailableSource();
         source.clip = clip;
@@ -79,40 +120,45 @@ public class AudioManager : MonoBehaviour
         source.Play();
     }
 
+    // ===== VOLUME CONTROL =====
     public void SetMasterVolume(float volume)
     {
         masterVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
+        UpdateAllVolumes();
     }
 
     public void SetMusicVolume(float volume)
     {
         musicVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
+        UpdateAllVolumes();
     }
 
     public void SetSFXVolume(float volume)
     {
         sfxVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
+        UpdateAllVolumes();
     }
 
-    public void ToggleMute(bool mute)
+    public void ToggleMute(bool muted)
     {
-        isMuted = mute;
-        AudioListener.volume = mute ? 0 : 1;
+        isMuted = muted;
+        AudioListener.volume = muted ? 0 : 1;
     }
 
-    private void UpdateVolumes()
+    private void UpdateAllVolumes()
     {
         musicSource.volume = isMuted ? 0 : musicVolume * masterVolume;
         
         foreach (var source in sfxPool)
         {
-            source.volume = isMuted ? 0 : sfxVolume * masterVolume;
+            if (source.isPlaying)
+            {
+                source.volume = isMuted ? 0 : sfxVolume * masterVolume;
+            }
         }
     }
 
+    // ===== POOL MANAGEMENT =====
     private AudioSource GetAvailableSource()
     {
         foreach (var source in sfxPool)
@@ -128,23 +174,5 @@ public class AudioManager : MonoBehaviour
         source.playOnAwake = false;
         sfxPool.Add(source);
         return source;
-    }
-
-    private void LoadVolumes()
-    {
-        masterVolume = PlayerPrefs.GetFloat("MasterVol", 0.8f);
-        musicVolume = PlayerPrefs.GetFloat("MusicVol", 0.7f);
-        sfxVolume = PlayerPrefs.GetFloat("SFXVol", 0.9f);
-        isMuted = PlayerPrefs.GetInt("IsMuted", 0) == 1;
-        UpdateVolumes();
-    }
-
-    public void SaveVolumes()
-    {
-        PlayerPrefs.SetFloat("MasterVol", masterVolume);
-        PlayerPrefs.SetFloat("MusicVol", musicVolume);
-        PlayerPrefs.SetFloat("SFXVol", sfxVolume);
-        PlayerPrefs.SetInt("IsMuted", isMuted ? 1 : 0);
-        PlayerPrefs.Save();
     }
 }

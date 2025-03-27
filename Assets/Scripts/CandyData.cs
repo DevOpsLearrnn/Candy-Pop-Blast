@@ -1,13 +1,13 @@
-public enum CandyType { 
-    Blueberry, 
-    Strawberry, 
-    Lemon, 
-    Mint, 
-    Grape, 
-    CottonCandy
+public enum CandyType
+{
+    Normal,
+    Striped,
+    Wrapped,
+    ColorBomb
 }
 
-public class CandyData : MonoBehaviour {
-    public int x, y;
-    public CandyType candyType;
+public class CandyData : MonoBehaviour
+{
+    public CandyType type;
+    public int colorIndex;
 }
