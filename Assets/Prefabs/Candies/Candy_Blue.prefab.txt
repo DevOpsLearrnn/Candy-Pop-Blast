@@ -1,0 +1,9 @@
+{
+  "type": "Candy",
+  "components": [
+    "SpriteRenderer (blue_candy.png)",
+    "BoxCollider2D (size: 1x1)",
+    "CandyData (type: Blue)"
+  ],
+  "tags": ["Candy", "Matchable"]
+}

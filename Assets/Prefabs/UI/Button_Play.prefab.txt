@@ -1,0 +1,8 @@
+{
+  "type": "UI Button",
+  "components": [
+    "Image (play_button.png)",
+    "Button (transition: ColorTint)",
+    "OnClick: LoadGameScene()"
+  ]
+}

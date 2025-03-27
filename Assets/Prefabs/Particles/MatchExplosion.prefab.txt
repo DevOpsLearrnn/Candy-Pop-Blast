@@ -1,0 +1,12 @@
+{
+  "type": "ParticleSystem",
+  "components": [
+    "ParticleSystem (duration: 0.8s)",
+    "ParticleRenderer (material: Sparkle)",
+    "OnEnable: Play()"
+  ],
+  "params": {
+    "startSpeed": 5,
+    "startColor": "yellow-to-orange gradient"
+  }
+}
